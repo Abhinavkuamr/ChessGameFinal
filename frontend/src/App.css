@@ -1,0 +1,103 @@
+/* Main container for chessboard and chat */
+.BoardAndChatContainer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px; /* Spacing between chessboard and chat */
+  padding: 20px; /* Adds spacing around the entire layout */
+}
+
+.GameMode {
+  display: flex;
+  justify-content: center;
+  gap: 10px; /* Space between buttons */
+  margin-bottom: 20px;
+}
+
+.ChessBoard {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.Chat {
+  width: 300px; /* Fixed width for the chat box */
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Chat message list */
+#messages {
+  list-style-type: none;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+#messages > li {
+  padding: 8px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
+
+#messages > li:nth-child(odd) {
+  background: #efefef;
+}
+
+/* Chat input form */
+#form {
+  display: flex;
+  width: 100%;
+  align-items: center;
+}
+
+#input {
+  flex-grow: 1;
+  padding: 10px;
+  margin-right: 5px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#form > button {
+  background: #333;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+#form > button:hover {
+  background-color: #555;
+}
+
+/* Optional: Styling for game mode buttons */
+.GameMode button {
+  background: #ddd;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.GameMode button:hover {
+  background-color: #bbb;
+}
