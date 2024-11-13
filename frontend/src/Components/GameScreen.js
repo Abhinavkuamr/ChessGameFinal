@@ -3,6 +3,7 @@ import Chessboard from 'chessboardjsx';
 import { Chess } from 'chess.js';
 import { io } from 'socket.io-client';
 import { doc, updateDoc, increment, getDoc, setDoc } from 'firebase/firestore';
+import Cookies from 'js-cookie';
 
 import {
   MessageCircle,
@@ -31,11 +32,26 @@ export default function GameScreen() {
   const [messages, setMessages] = useState([]);
   const [moveHistory, setMoveHistory] = useState([]);
   const [gameState, setGameState] = useState('idle'); // idle, searching, playing
-  const [playerColor, setPlayerColor] = useState(null);
+  const [playerColor, setPlayerColor] = useState(() => {
+    // Initialize playerColor from cookie if it exists
+    return Cookies.get('playerColor') || null;
+  });
   const [roomId, setRoomId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null); // Initialize as null
   const [showGameOverModal, setShowGameOverModal] = useState(false);
+
+  // Function to set player color and save to cookie
+  const setAndSavePlayerColor = (color) => {
+    setPlayerColor(color);
+    Cookies.set('playerColor', color, { expires: 1 }); // Cookie expires in 1 day
+    console.log('Set player color to:', color);
+  };
+
+  const clearPlayerColorCookie = () => {
+    Cookies.remove('playerColor');
+    setPlayerColor(null);
+  };
 
   useEffect(() => {
     console.log('Player Color changed:', playerColor);
@@ -107,9 +123,11 @@ export default function GameScreen() {
 
     socket.on('matchFound', ({ color, room }) => {
       console.log('Match found, playing as:', color);
+      // Immediately set the player color
       setPlayerColor(color);
       setRoomId(room);
       setGameState('playing');
+      setAndSavePlayerColor(color); // Save color to cookie
       setGame(new Chess());
       setFen('start');
       setIsWhiteTurn(true);
@@ -231,28 +249,32 @@ export default function GameScreen() {
 
   const handleGameOver = async (gameOverData) => {
     try {
-      console.log(' HERE Game Over Data:', gameOverData);
+      console.log('Game Over Data:', gameOverData);
       console.log('Current User:', currentUser?.email);
-      console.log('Player Color:', playerColor);
+
+      // Get player color from cookie as backup
+      const storedPlayerColor = Cookies.get('playerColor');
+      const finalPlayerColor = playerColor || storedPlayerColor;
+
+      console.log('Player Color (from state):', playerColor);
+      console.log('Player Color (from cookie):', storedPlayerColor);
+      console.log('Final Player Color used:', finalPlayerColor);
       console.log('Winner Color from Server:', gameOverData.winnerColor);
 
       setGameOver(true);
       setGameState('idle');
       setShowGameOverModal(true);
 
+      if (!finalPlayerColor) {
+        console.error('Could not determine player color');
+        return;
+      }
+
       let points = 0;
       let gameOverMessage = '';
 
-      // First determine if there's a winner
-      const hasWinner =
-        gameOverData.reason === 'checkmate' || gameOverData.reason === 'resign';
-
-      // Then determine if the current player won
-      const isWinner = hasWinner && gameOverData.winnerColor === playerColor;
-      console.log('Is Winner:', isWinner);
-
       if (gameOverData.reason === 'checkmate') {
-        if (gameOverData.winnerColor === playerColor) {
+        if (gameOverData.winnerColor === finalPlayerColor) {
           points = POINTS_CONFIG.WIN;
           gameOverMessage = '🏆 Congratulations! You win by checkmate!';
         } else {
@@ -266,7 +288,7 @@ export default function GameScreen() {
         points = POINTS_CONFIG.DRAW;
         gameOverMessage = '🤝 Game ended in a draw.';
       } else if (gameOverData.reason === 'resign') {
-        if (gameOverData.winnerColor === playerColor) {
+        if (gameOverData.winnerColor === finalPlayerColor) {
           points = POINTS_CONFIG.WIN;
           gameOverMessage = '🏆 Your opponent resigned. You win!';
         } else {
@@ -275,16 +297,28 @@ export default function GameScreen() {
         }
       }
 
-      console.log('Points to be awarded:', points);
-      console.log('Game over message:', gameOverMessage);
+      console.log('Points calculation:', {
+        finalPlayerColor,
+        winnerColor: gameOverData.winnerColor,
+        points,
+        reason: gameOverData.reason,
+      });
 
       setGameOverMessage(gameOverMessage);
       addMessage('system', gameOverMessage);
 
       if (currentUser?.email) {
-        console.log('Updating points for user:', currentUser.email);
+        console.log(
+          'Updating points for user:',
+          currentUser.email,
+          'Points:',
+          points
+        );
         await updatePlayerPoints(currentUser.email, points);
       }
+
+      // Clear the player color cookie after game ends
+      clearPlayerColorCookie();
     } catch (error) {
       console.error('Error in handleGameOver:', error);
     }
@@ -405,6 +439,8 @@ export default function GameScreen() {
       setPlayerColor(null);
       setRoomId(null);
       setGameOver(false);
+      clearPlayerColorCookie(); // Clear any existing player color
+
       setGameOverMessage('');
     }
   }, [socket, gameState, addMessage]);
@@ -433,6 +469,11 @@ export default function GameScreen() {
     },
     [socket, roomId, addMessage]
   );
+  useEffect(() => {
+    return () => {
+      clearPlayerColorCookie();
+    };
+  }, []);
   if (loading)
     return <p>Loading...</p>; // Display loading message while checking auth
   else
